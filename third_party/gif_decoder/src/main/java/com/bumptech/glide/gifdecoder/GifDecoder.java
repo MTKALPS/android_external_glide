@@ -184,7 +184,12 @@ public class GifDecoder {
      * Move the animation frame counter forward.
      */
     public void advance() {
-        framePointer = (framePointer + 1) % header.frameCount;
+        /// M: [BUG.MODIFY] Fix JE when the gif frame count is 0 @{
+        /*framePointer = (framePointer + 1) % header.frameCount;*/
+        if (header.frameCount >= 1) {
+            framePointer = (framePointer + 1) % header.frameCount;
+        }
+        /// @}
     }
 
     /**
@@ -445,6 +450,19 @@ public class GifDecoder {
                 previousImage.getPixels(dest, 0, width, 0, 0, width, height);
             }
         }
+
+        /// M: [BUG.ADD] Return initial state before enter next loop in gif @{
+        // Have handled with the situation which the dispose method is DISPOSAL_NONE in last frame.
+        // Filled with background color when enter next loop, even thought the last frame's dispose
+        // state is DISPOSAL_NONE, so the result is same as DISPOSAL_BACKGROUND in above situation.
+        if (previousFrame == null && framePointer == 0) {
+            int c = 0;
+            if (!currentFrame.transparency) {
+                c = header.bgColor;
+            }
+            Arrays.fill(dest, c);
+        }
+        /// @}
 
         // Decode pixels for this frame  into the global pixels[] scratch.
         decodeBitmapData(currentFrame);
